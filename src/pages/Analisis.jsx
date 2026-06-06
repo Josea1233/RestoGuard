@@ -15,6 +15,45 @@ import {
 import { authEnabled, supabase } from "../services/supabase";
 import { money, supabaseMessage } from "../utils/format";
 
+const globalBenchmarks = [
+  {
+    sistema: "Toast / Square",
+    foco: "POS rapido, handhelds, pagos y KDS",
+    restoGuard: "Base POS, mesas, caja, KDS y cobro ya conectados.",
+    prioridad: "Alta",
+  },
+  {
+    sistema: "Lightspeed / TouchBistro",
+    foco: "Salon, modificadores, reservas y fidelizacion",
+    restoGuard: "Salon y carta estan listos; faltan reservas, clientes y loyalty.",
+    prioridad: "Media",
+  },
+  {
+    sistema: "Oracle MICROS",
+    foco: "Multi-local, roles, integraciones y modo offline",
+    restoGuard: "Multi-negocio y roles estan listos; faltan multi-sucursal y offline.",
+    prioridad: "Alta",
+  },
+  {
+    sistema: "Restaurant365 / MarketMan",
+    foco: "Costos, compras, recetas, inventario y contabilidad",
+    restoGuard: "Inventario, compras y merma existen; faltan recetas y conteos guiados.",
+    prioridad: "Alta",
+  },
+  {
+    sistema: "Deliverect / Otter",
+    foco: "Delivery, agregadores, menu online y estado de pedidos",
+    restoGuard: "Canales existen; falta portal QR/delivery y sincronizacion externa.",
+    prioridad: "Media",
+  },
+  {
+    sistema: "POS Peru",
+    foco: "SUNAT, Yape/Plin, WhatsApp y QR",
+    restoGuard: "Yape/Plin estan en caja; faltan comprobantes SUNAT y QR publico.",
+    prioridad: "Alta",
+  },
+];
+
 function monthStartIso() {
   const date = new Date();
   date.setDate(1);
@@ -105,8 +144,10 @@ export default function Analisis() {
   const { negocioId } = useTenant();
   const realMode = authEnabled && Boolean(supabase);
   const [orders, setOrders] = useState([]);
+  const [tables, setTables] = useState([]);
   const [inventory, setInventory] = useState(() => (realMode ? [] : demoInventory));
   const [products, setProducts] = useState(() => (realMode ? [] : demoMenuEngineering));
+  const [employees, setEmployees] = useState([]);
   const [waste, setWaste] = useState([]);
   const [loading, setLoading] = useState(realMode);
   const [message, setMessage] = useState("");
@@ -127,7 +168,14 @@ export default function Analisis() {
     setLoading(true);
     setMessage("");
 
-    const [ordersResult, inventoryResult, productsResult, wasteResult] =
+    const [
+      ordersResult,
+      tablesResult,
+      inventoryResult,
+      productsResult,
+      employeesResult,
+      wasteResult,
+    ] =
       await Promise.all([
         supabase
           .from("pedidos")
@@ -135,12 +183,20 @@ export default function Analisis() {
           .eq("negocio_id", negocioId)
           .gte("created_at", monthStartIso()),
         supabase
+          .from("mesas")
+          .select("id,estado")
+          .eq("negocio_id", negocioId),
+        supabase
           .from("insumos")
           .select("id,nombre,unidad,stock,stock_minimo,costo_unitario,vencimiento")
           .eq("negocio_id", negocioId),
         supabase
           .from("productos")
           .select("id,nombre,categoria,precio,costo,activo")
+          .eq("negocio_id", negocioId),
+        supabase
+          .from("empleados")
+          .select("id,estado")
           .eq("negocio_id", negocioId),
         supabase
           .from("mermas")
@@ -151,8 +207,10 @@ export default function Analisis() {
 
     const error =
       ordersResult.error ||
+      tablesResult.error ||
       inventoryResult.error ||
       productsResult.error ||
+      employeesResult.error ||
       wasteResult.error;
 
     if (error) {
@@ -164,8 +222,10 @@ export default function Analisis() {
     }
 
     setOrders(ordersResult.data || []);
+    setTables(tablesResult.data || []);
     setInventory(inventoryResult.data || []);
     setProducts(productsResult.data || []);
+    setEmployees(employeesResult.data || []);
     setWaste(wasteResult.data || []);
     setLoading(false);
   }, [negocioId, realMode]);
@@ -189,6 +249,51 @@ export default function Analisis() {
     ? buildActions({ riskyItems, orders, products, wasteTotal })
     : demoSmartActions;
   const bestChannel = channelMix[0] || null;
+  const paidOrders = orders.filter((order) => order.estado === "COBRADO");
+  const coverageItems = realMode
+    ? [
+        {
+          label: "POS y salon",
+          ready: tables.length > 0 && products.length > 0,
+          detail: `${tables.length} mesas / ${products.length} productos`,
+        },
+        {
+          label: "Pedidos y caja",
+          ready: orders.length > 0,
+          detail: `${orders.length} pedidos del mes`,
+        },
+        {
+          label: "Venta real",
+          ready: paidOrders.length > 0,
+          detail: `${paidOrders.length} pedidos cobrados`,
+        },
+        {
+          label: "Inventario",
+          ready: inventory.length > 0,
+          detail: `${inventory.length} insumos`,
+        },
+        {
+          label: "RRHH",
+          ready: employees.length > 0,
+          detail: `${employees.length} empleados`,
+        },
+        {
+          label: "SUNAT y QR",
+          ready: false,
+          detail: "Siguiente modulo para Peru",
+        },
+      ]
+    : [
+        { label: "POS y salon", ready: true, detail: "Demo completa" },
+        { label: "Pedidos y caja", ready: true, detail: "Demo completa" },
+        { label: "Venta real", ready: true, detail: "Demo completa" },
+        { label: "Inventario", ready: true, detail: "Demo completa" },
+        { label: "RRHH", ready: true, detail: "Demo completa" },
+        { label: "SUNAT y QR", ready: false, detail: "Pendiente Peru" },
+      ];
+  const readinessScore = Math.round(
+    (coverageItems.filter((item) => item.ready).length / coverageItems.length) * 100
+  );
   const forecastRows = realMode
     ? channelMix.map((channel) => ({
         dia: channel.canal,
@@ -238,8 +343,9 @@ export default function Analisis() {
       <div className="stats-grid">
         <Stat
           icon={FiCpu}
-          label={realMode ? "Base de datos" : "Confianza demo"}
-          value={realMode ? `${orders.length} pedidos` : "91%"}
+          label={realMode ? "Madurez operativa" : "Confianza demo"}
+          value={realMode ? `${readinessScore}%` : "91%"}
+          hint={realMode ? `${orders.length} pedidos` : undefined}
           tone="blue"
         />
         <Stat
@@ -262,6 +368,34 @@ export default function Analisis() {
           tone="green"
         />
       </div>
+
+      <Card title="Comparativa profesional">
+        <div className="benchmark-grid">
+          {globalBenchmarks.map((item) => (
+            <div className="benchmark-card" key={item.sistema}>
+              <Badge tone={item.prioridad === "Alta" ? "red" : "blue"}>
+                {item.sistema}
+              </Badge>
+              <strong>{item.foco}</strong>
+              <span>{item.restoGuard}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card title="Estado frente a sistemas lideres">
+        <div className="role-grid">
+          {coverageItems.map((item) => (
+            <div className="role-card" key={item.label}>
+              <Badge tone={item.ready ? "green" : "amber"}>
+                {item.ready ? "LISTO" : "PENDIENTE"}
+              </Badge>
+              <strong>{item.label}</strong>
+              <span>{item.detail}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
 
       <div className="two-col wide-left">
         <Card title="Prioridades automaticas">
@@ -350,7 +484,7 @@ export default function Analisis() {
         )}
       </Card>
 
-      <Card title="Benchmark internacional aplicado">
+      <Card title="Ideas de benchmark internacional">
         <div className="benchmark-grid">
           {demoBenchmarkIdeas.map((item) => (
             <div className="benchmark-card" key={item.sistema}>

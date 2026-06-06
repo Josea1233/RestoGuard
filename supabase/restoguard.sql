@@ -493,6 +493,94 @@ begin
 end;
 $$;
 
+create or replace function public.crear_mi_negocio(
+  p_nombre text,
+  p_rubro text default 'Restaurante',
+  p_ciudad text default 'Pucallpa'
+)
+returns table (
+  id bigint,
+  nombre text,
+  estado text,
+  plan text,
+  trial_ends_at timestamp with time zone
+)
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_user_id uuid := auth.uid();
+  v_user_email text;
+  v_negocio public.negocios;
+begin
+  if v_user_id is null then
+    raise exception 'Debes iniciar sesion para crear tu negocio';
+  end if;
+
+  if nullif(trim(p_nombre), '') is null then
+    raise exception 'El nombre del negocio es obligatorio';
+  end if;
+
+  if exists (
+    select 1
+    from public.negocio_usuarios nu
+    where nu.user_id = v_user_id
+  ) then
+    raise exception 'Tu usuario ya esta asignado a un negocio';
+  end if;
+
+  select au.email::text
+    into v_user_email
+  from auth.users au
+  where au.id = v_user_id
+  limit 1;
+
+  insert into public.negocios (
+    owner_id,
+    nombre,
+    rubro,
+    ciudad,
+    estado,
+    plan,
+    beta_started_at,
+    trial_ends_at
+  )
+  values (
+    v_user_id,
+    trim(p_nombre),
+    coalesce(nullif(trim(p_rubro), ''), 'Restaurante'),
+    coalesce(nullif(trim(p_ciudad), ''), 'Pucallpa'),
+    'BETA',
+    'BETA',
+    now(),
+    now() + interval '30 days'
+  )
+  returning * into v_negocio;
+
+  insert into public.negocio_usuarios (
+    negocio_id,
+    user_id,
+    email,
+    rol
+  )
+  values (
+    v_negocio.id,
+    v_user_id,
+    lower(v_user_email),
+    'ADMIN'
+  );
+
+  return query
+    select
+      v_negocio.id,
+      v_negocio.nombre,
+      v_negocio.estado,
+      v_negocio.plan,
+      v_negocio.trial_ends_at;
+end;
+$$;
+
 create or replace function public.actualizar_estado_negocio(
   p_negocio_id bigint,
   p_estado text
@@ -602,6 +690,7 @@ $$;
 grant execute on function public.es_super_admin() to authenticated;
 grant execute on function public.listar_negocios_admin() to authenticated;
 grant execute on function public.crear_negocio_admin(text, text, text, text) to authenticated;
+grant execute on function public.crear_mi_negocio(text, text, text) to authenticated;
 grant execute on function public.actualizar_estado_negocio(bigint, text) to authenticated;
 grant execute on function public.agregar_usuario_negocio(bigint, text, text) to authenticated;
 

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import AppShell from "./components/AppShell";
@@ -14,6 +15,7 @@ import Merma from "./pages/Merma";
 import Operacion from "./pages/Operacion";
 import RRHH from "./pages/RRHH";
 import { supabase } from "./services/supabase";
+import { supabaseMessage } from "./utils/format";
 
 function LoadingScreen() {
   return (
@@ -27,20 +29,91 @@ function LoadingScreen() {
 
 function AccessBlocked() {
   const { error, reloadTenant } = useTenant();
+  const [form, setForm] = useState({
+    nombre: "",
+    rubro: "Restaurante",
+    ciudad: "Pucallpa",
+  });
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function createBusiness() {
+    if (!supabase) return;
+
+    if (!form.nombre.trim()) {
+      setMessage("Escribe el nombre del negocio para empezar.");
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+
+    const { error: createError } = await supabase.rpc("crear_mi_negocio", {
+      p_nombre: form.nombre.trim(),
+      p_rubro: form.rubro.trim(),
+      p_ciudad: form.ciudad.trim(),
+    });
+
+    setSaving(false);
+
+    if (createError) {
+      setMessage(supabaseMessage(createError));
+      return;
+    }
+
+    await reloadTenant();
+  }
 
   return (
     <div className="screen-center">
       <div className="panel narrow">
         <p className="eyebrow">Acceso privado</p>
-        <h1>Cuenta sin negocio asignado</h1>
+        <h1>Crea tu negocio</h1>
         <p className="muted">
-          Tu usuario existe, pero todavia no fue conectado a un restaurante,
-          bar o cafeteria. El administrador debe crear el negocio y asignarte.
+          Tu usuario existe, pero todavia no tiene restaurante, bar o cafeteria
+          asignado. Crea tu negocio y empieza con la configuracion inicial.
         </p>
         {error && <div className="notice danger">{error}</div>}
+        {message && <div className="notice warning">{message}</div>}
+        <div className="form-grid">
+          <input
+            placeholder="Nombre del negocio"
+            value={form.nombre}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, nombre: event.target.value }))
+            }
+          />
+          <input
+            placeholder="Rubro"
+            value={form.rubro}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, rubro: event.target.value }))
+            }
+          />
+          <input
+            placeholder="Ciudad"
+            value={form.ciudad}
+            onChange={(event) =>
+              setForm((current) => ({ ...current, ciudad: event.target.value }))
+            }
+          />
+        </div>
         <div className="actions">
-          <button className="btn primary" type="button" onClick={reloadTenant}>
-            Reintentar
+          <button
+            className="btn primary"
+            type="button"
+            onClick={createBusiness}
+            disabled={saving}
+          >
+            Crear negocio
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={reloadTenant}
+            disabled={saving}
+          >
+            Actualizar
           </button>
           {supabase && (
             <button
