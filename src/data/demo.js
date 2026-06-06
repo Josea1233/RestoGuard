@@ -389,6 +389,7 @@ export const demoRoleMatrix = [
   { rol: "MOZO", permisos: "Mesas, pedidos y notas de servicio" },
   { rol: "COCINA", permisos: "Comandas, tiempos y estados de produccion" },
   { rol: "BARRA", permisos: "Bebidas, barra y despacho rapido" },
+  { rol: "RRHH", permisos: "Empleados, turnos, asistencia y planilla" },
 ];
 
 export const demoSchedule = [

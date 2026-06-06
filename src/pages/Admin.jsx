@@ -15,7 +15,7 @@ import { demoOnboarding, demoPlans, demoRoleMatrix } from "../data/demo";
 import { authEnabled, supabase } from "../services/supabase";
 import { date, daysLeft, money, supabaseMessage } from "../utils/format";
 
-const roles = ["ADMIN", "SUPERVISOR", "CAJA", "MOZO", "COCINA", "BARRA"];
+const roles = ["ADMIN", "SUPERVISOR", "CAJA", "MOZO", "COCINA", "BARRA", "RRHH"];
 const estados = ["BETA", "ACTIVO", "SUSPENDIDO"];
 
 export default function Admin() {

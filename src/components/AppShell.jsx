@@ -10,6 +10,7 @@ import {
   FiMonitor,
   FiPackage,
   FiSettings,
+  FiSliders,
   FiShoppingCart,
   FiTrendingDown,
   FiUserCheck,
@@ -28,6 +29,7 @@ const navItems = [
   { to: "/rrhh", label: "RRHH", icon: FiUserCheck },
   { to: "/merma", label: "Merma", icon: FiTrendingDown },
   { to: "/analisis", label: "Analisis", icon: FiCpu },
+  { to: "/configuracion", label: "Config", icon: FiSliders },
   { to: "/admin", label: "Admin", icon: FiSettings },
 ];
 

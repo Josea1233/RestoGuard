@@ -6,6 +6,7 @@ import { TenantProvider, useTenant } from "./context/TenantContext";
 import Admin from "./pages/Admin";
 import Analisis from "./pages/Analisis";
 import Cocina from "./pages/Cocina";
+import Configuracion from "./pages/Configuracion";
 import Dashboard from "./pages/Dashboard";
 import Finanzas from "./pages/Finanzas";
 import Inventario from "./pages/Inventario";
@@ -120,6 +121,7 @@ function AppRoutes() {
       <Route path="/rrhh" element={<RRHH />} />
       <Route path="/merma" element={<Merma />} />
       <Route path="/analisis" element={<Analisis />} />
+      <Route path="/configuracion" element={<Configuracion />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

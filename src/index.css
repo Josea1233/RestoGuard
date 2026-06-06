@@ -1453,8 +1453,37 @@ select:focus {
   grid-template-columns: minmax(0, 1fr) 160px;
 }
 
+.form-grid.three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .form-grid.split .full {
   grid-column: 1 / -1;
+}
+
+.config-grid,
+.config-tables {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  min-width: 0;
+}
+
+.config-tables {
+  grid-template-columns: 1fr;
+}
+
+.config-table {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+
+.config-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .notice {
@@ -1599,6 +1628,8 @@ select:focus {
   .page-header,
   .dashboard-grid,
   .admin-overview,
+  .config-grid,
+  .config-tables,
   .two-col,
   .two-col.wide-left,
   .operation-layout,
@@ -1641,6 +1672,10 @@ select:focus {
   }
 
   .form-grid.split {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid.three {
     grid-template-columns: 1fr;
   }
 
