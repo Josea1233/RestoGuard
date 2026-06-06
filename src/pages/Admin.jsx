@@ -213,7 +213,7 @@ export default function Admin() {
     setSaving(true);
     setMessage("");
 
-    const { error } = await supabase.rpc("actualizar_estado_negocio", {
+    const { data, error } = await supabase.rpc("actualizar_estado_negocio", {
       p_negocio_id: businessId,
       p_estado: estado,
     });
@@ -225,9 +225,24 @@ export default function Admin() {
       return;
     }
 
-    setMessage("Estado actualizado.");
-    await loadAdmin();
+    const updatedBusiness = data?.[0];
+    if (updatedBusiness) {
+      setBusinesses((current) =>
+        current.map((business) =>
+          business.id === businessId
+            ? {
+                ...business,
+                estado: updatedBusiness.estado,
+                plan: updatedBusiness.plan,
+              }
+            : business
+        )
+      );
+    }
+
+    setMessage(`Estado actualizado a ${estado}.`);
     await reloadTenant();
+    await loadAdmin();
   }
 
   const summary = useMemo(
